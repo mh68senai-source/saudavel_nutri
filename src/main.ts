@@ -184,6 +184,53 @@ const sidebarTemplate = () => `
   </aside>
 `
 
+const dashboardTemplate = () => `
+  <div class="dashboard-layout">
+    ${sidebarTemplate()}
+    <main class="main-content">
+      <header>
+        <h1>Bem-vinda, Nutri!</h1>
+        <p style="color: var(--text-light)">Aqui está o que está acontecendo hoje.</p>
+      </header>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="icon">👥</div>
+          <div class="value">${dashboardData.totalPatients}</div>
+          <div class="label">Total de Pacientes</div>
+        </div>
+        <div class="stat-card">
+          <div class="icon">📅</div>
+          <div class="value">${dashboardData.weeklyConsultations}</div>
+          <div class="label">Consultas na Semana</div>
+        </div>
+        <div class="stat-card">
+          <div class="icon">⚠️</div>
+          <div class="value">${dashboardData.patientsWithoutReturn.length}</div>
+          <div class="label">Pacientes sem Retorno</div>
+        </div>
+      </div>
+
+      <div class="dashboard-sections">
+        <section class="card section-card">
+          <h3>⚠️ Pacientes sem retorno (> 30 dias)</h3>
+          <div class="patient-list-mini">
+            ${dashboardData.patientsWithoutReturn.length > 0 
+              ? dashboardData.patientsWithoutReturn.map(p => `
+                  <div class="patient-item-mini">
+                    <span>${p.nome}</span>
+                    <span class="tag">Última: ${new Date(p.ultima_consulta).toLocaleDateString()}</span>
+                  </div>
+                `).join('')
+              : '<p class="empty-text">Tudo em dia!</p>'
+            }
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+`
+
 const patientListTemplate = () => `
   <div class="dashboard-layout">
     ${sidebarTemplate()}
@@ -388,6 +435,7 @@ const patientFormTemplate = () => {
   </div>
   <div id="toast" class="toast">✓ Paciente salvo com sucesso!</div>
 `
+}
 
 const profileTemplate = () => `
   <div class="dashboard-layout">
@@ -441,7 +489,6 @@ const profileTemplate = () => `
     </main>
   </div>
 `
-}
 
 // --- Functions ---
 
@@ -797,7 +844,7 @@ async function handlePatientSubmit(e: Event) {
   loading = true
   render()
   
-  const { data: newPatient, error } = await supabase
+  const { error } = await supabase
     .from('pacientes')
     .insert([data])
     .select()
