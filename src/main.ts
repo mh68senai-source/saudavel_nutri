@@ -112,6 +112,20 @@ const signupTemplate = () => `
           <label for="preferred-name">Como prefere ser chamado?</label>
           <input type="text" id="preferred-name" placeholder="Ex: Nutri Maria" required>
         </div>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 0;">
+          <div class="form-group">
+            <label for="crn">CRN (Registro)</label>
+            <input type="text" id="crn" placeholder="Ex: 12345/P" required>
+          </div>
+          <div class="form-group">
+            <label for="prof-telefone">Telefone</label>
+            <input type="text" id="prof-telefone" placeholder="(00) 00000-0000" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="especialidade">Especialidade</label>
+          <input type="text" id="especialidade" placeholder="Ex: Nutrição Esportiva" required>
+        </div>
         <div class="form-group">
           <label for="email">E-mail</label>
           <input type="email" id="email" placeholder="seu@email.com" required>
@@ -463,17 +477,31 @@ const profileTemplate = () => `
           <div id="personal-success" class="success-message" style="display: none; background: #f0fff4; color: #27ae60; padding: 12px; border-radius: 10px; margin-bottom: 20px;"></div>
 
           <form id="update-profile-form">
-            <div class="form-group">
-              <label>Nome Completo</label>
-              <input type="text" id="prof-full-name" value="${currentUser?.user_metadata?.full_name || ''}" required>
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div class="form-group">
+                <label>Nome Completo</label>
+                <input type="text" id="prof-full-name" value="${currentUser?.user_metadata?.full_name || ''}" required>
+              </div>
+              <div class="form-group">
+                <label>Como prefere ser chamado</label>
+                <input type="text" id="prof-preferred-name" value="${currentUser?.user_metadata?.preferred_name || ''}" required>
+              </div>
+              <div class="form-group">
+                <label>CRN</label>
+                <input type="text" id="prof-crn" value="${currentUser?.user_metadata?.crn || ''}" required>
+              </div>
+              <div class="form-group">
+                <label>Telefone</label>
+                <input type="text" id="prof-phone" value="${currentUser?.user_metadata?.telefone || ''}" required>
+              </div>
             </div>
             <div class="form-group">
-              <label>Como prefere ser chamado</label>
-              <input type="text" id="prof-preferred-name" value="${currentUser?.user_metadata?.preferred_name || ''}" required>
+              <label>Especialidade</label>
+              <input type="text" id="prof-specialty" value="${currentUser?.user_metadata?.especialidade || ''}" required>
             </div>
             <div class="form-group">
-              <label>E-mail (não alterável)</label>
-              <input type="text" value="${currentUser?.email || ''}" readonly style="background: #f8f9fa; cursor: not-allowed;">
+              <label>E-mail (Login)</label>
+              <input type="email" id="prof-email" value="${currentUser?.email || ''}" required>
             </div>
             <button type="submit" class="btn-primary" ${loading ? 'disabled' : ''}>
               ${loading ? 'Salvando...' : 'Salvar Alterações'}
@@ -1410,6 +1438,10 @@ async function handleUpdateProfile(e: Event) {
   e.preventDefault()
   const fullName = (document.querySelector('#prof-full-name') as HTMLInputElement).value
   const preferredName = (document.querySelector('#prof-preferred-name') as HTMLInputElement).value
+  const crn = (document.querySelector('#prof-crn') as HTMLInputElement).value
+  const phone = (document.querySelector('#prof-phone') as HTMLInputElement).value
+  const specialty = (document.querySelector('#prof-specialty') as HTMLInputElement).value
+  const email = (document.querySelector('#prof-email') as HTMLInputElement).value
   
   const errorBox = document.querySelector('#personal-error') as HTMLElement
   const successBox = document.querySelector('#personal-success') as HTMLElement
@@ -1418,9 +1450,13 @@ async function handleUpdateProfile(e: Event) {
   render()
   
   const { error } = await supabase.auth.updateUser({
+    email: email,
     data: {
       full_name: fullName,
-      preferred_name: preferredName
+      preferred_name: preferredName,
+      crn: crn,
+      telefone: phone,
+      especialidade: specialty
     }
   })
   
@@ -1430,6 +1466,9 @@ async function handleUpdateProfile(e: Event) {
     successBox.style.display = 'none'
   } else {
     successBox.textContent = 'Perfil atualizado com sucesso!'
+    if (email !== currentUser.email) {
+      successBox.textContent += ' Verifique seu novo e-mail para confirmar a alteração.'
+    }
     successBox.style.display = 'block'
     errorBox.style.display = 'none'
   }
@@ -1442,6 +1481,9 @@ async function handleSignup(e: Event) {
   e.preventDefault()
   const fullName = (document.querySelector('#full-name') as HTMLInputElement).value
   const preferredName = (document.querySelector('#preferred-name') as HTMLInputElement).value
+  const crn = (document.querySelector('#crn') as HTMLInputElement).value
+  const phone = (document.querySelector('#prof-telefone') as HTMLInputElement).value
+  const specialty = (document.querySelector('#especialidade') as HTMLInputElement).value
   const email = (document.querySelector('#email') as HTMLInputElement).value
   const password = (document.querySelector('#password') as HTMLInputElement).value
   const confirmPassword = (document.querySelector('#confirm-password') as HTMLInputElement).value
@@ -1462,7 +1504,10 @@ async function handleSignup(e: Event) {
     options: {
       data: {
         full_name: fullName,
-        preferred_name: preferredName
+        preferred_name: preferredName,
+        crn: crn,
+        telefone: phone,
+        especialidade: specialty
       }
     }
   })
