@@ -458,18 +458,27 @@ const profileTemplate = () => `
       <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
         <div class="stat-card" style="text-align: left;">
           <h3 style="margin-bottom: 20px;">Informações Pessoais</h3>
-          <div class="form-group">
-            <label>Nome Completo</label>
-            <input type="text" value="${currentUser?.user_metadata?.full_name || ''}" readonly style="background: #f8f9fa;">
-          </div>
-          <div class="form-group">
-            <label>Como prefere ser chamado</label>
-            <input type="text" value="${currentUser?.user_metadata?.preferred_name || ''}" readonly style="background: #f8f9fa;">
-          </div>
-          <div class="form-group">
-            <label>E-mail</label>
-            <input type="text" value="${currentUser?.email || ''}" readonly style="background: #f8f9fa;">
-          </div>
+          
+          <div id="personal-error" class="error-message"></div>
+          <div id="personal-success" class="success-message" style="display: none; background: #f0fff4; color: #27ae60; padding: 12px; border-radius: 10px; margin-bottom: 20px;"></div>
+
+          <form id="update-profile-form">
+            <div class="form-group">
+              <label>Nome Completo</label>
+              <input type="text" id="prof-full-name" value="${currentUser?.user_metadata?.full_name || ''}" required>
+            </div>
+            <div class="form-group">
+              <label>Como prefere ser chamado</label>
+              <input type="text" id="prof-preferred-name" value="${currentUser?.user_metadata?.preferred_name || ''}" required>
+            </div>
+            <div class="form-group">
+              <label>E-mail (não alterável)</label>
+              <input type="text" value="${currentUser?.email || ''}" readonly style="background: #f8f9fa; cursor: not-allowed;">
+            </div>
+            <button type="submit" class="btn-primary" ${loading ? 'disabled' : ''}>
+              ${loading ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
+          </form>
         </div>
 
         <div class="stat-card" style="text-align: left;">
@@ -1175,6 +1184,7 @@ function attachEvents() {
   document.querySelector('#signup-form')?.addEventListener('submit', handleSignup)
   document.querySelector('#forgot-password-form')?.addEventListener('submit', handleForgotPassword)
   document.querySelector('#update-password-form')?.addEventListener('submit', handleUpdatePassword)
+  document.querySelector('#update-profile-form')?.addEventListener('submit', handleUpdateProfile)
   
   // Logout
   document.querySelector('#logout-btn')?.addEventListener('click', handleLogout)
@@ -1390,6 +1400,38 @@ async function handleUpdatePassword(e: Event) {
     // Clear fields
     const form = document.querySelector('#update-password-form') as HTMLFormElement
     form.reset()
+  }
+  
+  loading = false
+  render()
+}
+
+async function handleUpdateProfile(e: Event) {
+  e.preventDefault()
+  const fullName = (document.querySelector('#prof-full-name') as HTMLInputElement).value
+  const preferredName = (document.querySelector('#prof-preferred-name') as HTMLInputElement).value
+  
+  const errorBox = document.querySelector('#personal-error') as HTMLElement
+  const successBox = document.querySelector('#personal-success') as HTMLElement
+  
+  loading = true
+  render()
+  
+  const { error } = await supabase.auth.updateUser({
+    data: {
+      full_name: fullName,
+      preferred_name: preferredName
+    }
+  })
+  
+  if (error) {
+    errorBox.textContent = 'Erro ao atualizar: ' + error.message
+    errorBox.style.display = 'block'
+    successBox.style.display = 'none'
+  } else {
+    successBox.textContent = 'Perfil atualizado com sucesso!'
+    successBox.style.display = 'block'
+    errorBox.style.display = 'none'
   }
   
   loading = false
