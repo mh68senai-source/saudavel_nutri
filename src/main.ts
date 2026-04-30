@@ -1,10 +1,11 @@
 import './style.css'
 import { supabase } from './supabase'
+import Chart from 'chart.js/auto'
 
 const app = document.querySelector<HTMLDivElement>('#app')!
 
 // --- State ---
-let view: 'login' | 'signup' | 'dashboard' | 'patients' | 'patient-form' | 'forgot-password' | 'profile' = 'login'
+let view: 'login' | 'signup' | 'dashboard' | 'patients' | 'patient-form' | 'forgot-password' | 'profile' | 'patient-profile' = 'login'
 let loading = false
 let errorMessage = ''
 let successMessage = ''
@@ -44,6 +45,10 @@ let patientFormData: any = {
   atividade_fisica_descricao: '',
   observacoes: ''
 }
+let selectedPatient: any = null
+let patientConsultations: any[] = []
+let patientPlans: any[] = []
+let isConsultationModalOpen = false
 
 // --- Templates ---
 
@@ -490,6 +495,193 @@ const profileTemplate = () => `
   </div>
 `
 
+const patientProfileTemplate = () => {
+  if (!selectedPatient) return '<div class="main-content">Carregando perfil...</div>'
+
+  return `
+  <div class="dashboard-layout">
+    ${sidebarTemplate()}
+    <main class="main-content">
+      <div class="page-header">
+        <div>
+          <h1 style="margin-bottom: 5px;">${selectedPatient.nome}</h1>
+          <p style="color: var(--text-light)">Perfil do Paciente</p>
+        </div>
+        <button class="btn-secondary" id="btn-back-patients">← Voltar</button>
+      </div>
+
+      <div class="profile-container">
+        <!-- Seção 1 -->
+        <section class="profile-section">
+          <div class="section-header">
+            <h2>👤 Dados do Paciente</h2>
+            <button class="btn-primary" id="btn-save-profile">Salvar Alterações</button>
+          </div>
+          
+          <div class="form-tabs">
+            <button class="tab-btn ${currentTab === 'pessoal' ? 'active' : ''}" data-tab="pessoal">Pessoal</button>
+            <button class="tab-btn ${currentTab === 'clinico' ? 'active' : ''}" data-tab="clinico">Clínico</button>
+            <button class="tab-btn ${currentTab === 'habitos' ? 'active' : ''}" data-tab="habitos">Hábitos</button>
+          </div>
+
+          <form id="edit-patient-form" style="padding-top: 20px;">
+            <div class="tab-content ${currentTab === 'pessoal' ? 'active' : ''}">
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label>Nome Completo *</label>
+                  <input type="text" name="nome" value="${selectedPatient.nome}" required>
+                </div>
+                <div class="form-group">
+                  <label>E-mail</label>
+                  <input type="email" name="email" value="${selectedPatient.email || ''}">
+                </div>
+                <div class="form-group">
+                  <label>Telefone</label>
+                  <input type="text" name="telefone" value="${selectedPatient.telefone || ''}">
+                </div>
+              </div>
+            </div>
+            
+            <div class="tab-content ${currentTab === 'clinico' ? 'active' : ''}">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Peso Inicial (kg)</label>
+                  <input type="number" step="0.1" name="peso_inicial" value="${selectedPatient.peso_inicial || ''}">
+                </div>
+                <div class="form-group">
+                  <label>Altura (cm)</label>
+                  <input type="number" name="altura" value="${selectedPatient.altura || ''}">
+                </div>
+                <div class="form-group full">
+                  <label>Objetivo Principal</label>
+                  <input type="text" name="objetivo_texto" value="${selectedPatient.objetivo_texto || ''}">
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-content ${currentTab === 'habitos' ? 'active' : ''}">
+              <div class="form-group full">
+                <label>Observações Gerais</label>
+                <textarea name="observacoes" rows="4" style="width:100%; padding:12px; border-radius:12px; border:2px solid #edf2f7; font-family:inherit;">${selectedPatient.observacoes || ''}</textarea>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <!-- Seção 2 -->
+        <section class="profile-section">
+          <div class="section-header">
+            <h2>📅 Consultas</h2>
+            <button class="btn-primary" id="btn-open-consultation">+ Nova Consulta</button>
+          </div>
+
+          <div class="consultations-layout">
+            <div class="chart-wrapper">
+              <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-light);">EVOLUÇÃO DE PESO</h3>
+              ${patientConsultations.length === 0 ? '<div class="empty-state" style="text-align: center; padding-top: 50px;">Nenhuma consulta registrada ainda</div>' : '<canvas id="weightChart"></canvas>'}
+            </div>
+
+            <div class="consultation-list">
+              <h3 style="margin-bottom: 10px; font-size: 14px; color: var(--text-light);">HISTÓRICO</h3>
+              ${patientConsultations.length === 0 ? '<p class="empty-state">Sem histórico.</p>' : 
+                patientConsultations.map(c => `
+                  <div class="consultation-card">
+                    <div class="cons-header">
+                      <div class="cons-date">${new Date(c.data_consulta).toLocaleDateString('pt-BR')}</div>
+                      <div class="tag">Retorno: ${c.proximo_retorno ? new Date(c.proximo_retorno).toLocaleDateString('pt-BR') : 'Não definido'}</div>
+                    </div>
+                    <div class="cons-metrics">
+                      <div class="metric-item">
+                        <span class="metric-label">Peso</span>
+                        <span class="metric-value">${c.peso} kg</span>
+                      </div>
+                      <div class="metric-item">
+                        <span class="metric-label">Cintura</span>
+                        <span class="metric-value">${c.cintura || '-'} cm</span>
+                      </div>
+                      <div class="metric-item">
+                        <span class="metric-label">Quadril</span>
+                        <span class="metric-value">${c.quadril || '-'} cm</span>
+                      </div>
+                      <div class="metric-item">
+                        <span class="metric-label">% Gordura</span>
+                        <span class="metric-value">${c.percentual_gordura || '-'} %</span>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')
+              }
+            </div>
+          </div>
+        </section>
+
+        <!-- Seção 3 -->
+        <section class="profile-section">
+          <div class="section-header">
+            <h2>🥗 Planos Alimentares</h2>
+            <button class="btn-primary" id="btn-generate-plan">Gerar Plano Alimentar</button>
+          </div>
+          <div class="plan-history">
+            ${patientPlans.length === 0 ? '<p class="empty-state">Nenhum plano alimentar gerado ainda</p>' : 
+              patientPlans.map(p => `
+                <div class="plan-item">
+                  <div class="plan-date">Plano de ${new Date(p.created_at).toLocaleDateString('pt-BR')}</div>
+                  <button class="btn-icon">👁️</button>
+                </div>
+              `).join('')
+            }
+          </div>
+        </section>
+      </div>
+    </main>
+    
+    <div class="modal-overlay ${isConsultationModalOpen ? 'show' : ''}" id="consultation-modal">
+      <div class="modal-content">
+        <h2 style="margin-bottom: 20px;">Nova Consulta</h2>
+        <form id="new-consultation-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Data *</label>
+              <input type="date" name="data_consulta" value="${new Date().toISOString().split('T')[0]}" required>
+            </div>
+            <div class="form-group">
+              <label>Peso (kg) *</label>
+              <input type="number" step="0.1" name="peso" required>
+            </div>
+            <div class="form-group">
+              <label>Cintura (cm)</label>
+              <input type="number" step="0.1" name="cintura">
+            </div>
+            <div class="form-group">
+              <label>Quadril (cm)</label>
+              <input type="number" step="0.1" name="quadril">
+            </div>
+            <div class="form-group">
+              <label>% Gordura</label>
+              <input type="number" step="0.1" name="percentual_gordura">
+            </div>
+            <div class="form-group">
+              <label>Próximo Retorno</label>
+              <input type="date" name="proximo_retorno">
+            </div>
+          </div>
+          <div class="form-group full" style="margin-top: 15px;">
+            <label>Observações</label>
+            <textarea name="observacoes" rows="3" style="width:100%; padding:12px; border-radius:12px; border:2px solid #edf2f7; font-family:inherit;"></textarea>
+          </div>
+          <div style="display: flex; gap: 15px; margin-top: 20px;">
+            <button type="button" class="btn-secondary" id="btn-close-modal">Cancelar</button>
+            <button type="submit" class="btn-primary">Salvar Consulta</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="toast" class="toast">✓ Alterações salvas com sucesso!</div>
+  </div>
+  `
+}
+
 // --- Functions ---
 
 function render() {
@@ -513,6 +705,12 @@ function render() {
   }
   else if (view === 'profile') {
     app.innerHTML = profileTemplate()
+  }
+  else if (view === 'patient-profile') {
+    app.innerHTML = patientProfileTemplate()
+    if (patientConsultations.length > 0) {
+      setTimeout(renderWeightChart, 100)
+    }
   }
   
   attachEvents()
@@ -627,6 +825,170 @@ async function loadDashboardData() {
     loading = false
     render()
   }
+}
+
+async function loadPatientProfile(id: string) {
+  loading = true
+  render()
+  
+  try {
+    // 1. Fetch Patient
+    const { data: patient } = await supabase
+      .from('pacientes')
+      .select('*')
+      .eq('id', id)
+      .single()
+    
+    selectedPatient = patient
+
+    // 2. Fetch Consultations
+    const { data: consultations } = await supabase
+      .from('consultas')
+      .select('*')
+      .eq('paciente_id', id)
+      .order('data_consulta', { ascending: false })
+    
+    patientConsultations = consultations || []
+
+    // 3. Fetch Plans
+    const { data: plans } = await supabase
+      .from('planos_alimentares')
+      .select('*')
+      .eq('paciente_id', id)
+      .order('created_at', { ascending: false })
+    
+    patientPlans = plans || []
+
+  } catch (error) {
+    console.error('Error loading patient profile:', error)
+  } finally {
+    loading = false
+    view = 'patient-profile'
+    render()
+  }
+}
+
+async function handleSavePatientProfile(e: Event) {
+  e.preventDefault()
+  if (!selectedPatient) return
+
+  const formData = new FormData(document.querySelector('#edit-patient-form') as HTMLFormElement)
+  const updates = Object.fromEntries(formData.entries())
+  
+  loading = true
+  render()
+
+  const { error } = await supabase
+    .from('pacientes')
+    .update(updates)
+    .eq('id', selectedPatient.id)
+  
+  if (error) {
+    alert('Erro ao salvar alterações: ' + error.message)
+  } else {
+    // Update local state
+    selectedPatient = { ...selectedPatient, ...updates }
+    showToast('Alterações salvas com sucesso!')
+  }
+  
+  loading = false
+  render()
+}
+
+async function handleSaveConsultation(e: Event) {
+  e.preventDefault()
+  if (!selectedPatient) return
+
+  const form = document.querySelector('#new-consultation-form') as HTMLFormElement
+  const formData = new FormData(form)
+  const data: any = Object.fromEntries(formData.entries())
+  
+  // Format numeric values
+  data.paciente_id = selectedPatient.id
+  data.peso = parseFloat(data.peso)
+  data.cintura = data.cintura ? parseFloat(data.cintura) : null
+  data.quadril = data.quadril ? parseFloat(data.quadril) : null
+  data.percentual_gordura = data.percentual_gordura ? parseFloat(data.percentual_gordura) : null
+  
+  loading = true
+  render()
+
+  const { error } = await supabase
+    .from('consultas')
+    .insert([data])
+  
+  if (error) {
+    alert('Erro ao salvar consulta: ' + error.message)
+  } else {
+    isConsultationModalOpen = false
+    await loadPatientProfile(selectedPatient.id)
+    showToast('Consulta salva com sucesso!')
+  }
+  
+  loading = false
+  render()
+}
+
+function showToast(message: string) {
+  const toast = document.querySelector('#toast')
+  if (toast) {
+    toast.textContent = '✓ ' + message
+    toast.classList.add('show')
+    setTimeout(() => toast.classList.remove('show'), 3000)
+  }
+}
+
+let weightChart: any = null
+
+function renderWeightChart() {
+  const ctx = document.getElementById('weightChart') as HTMLCanvasElement
+  if (!ctx) return
+
+  if (weightChart) {
+    weightChart.destroy()
+  }
+
+  const sortedConsultations = [...patientConsultations].sort((a, b) => 
+    new Date(a.data_consulta).getTime() - new Date(b.data_consulta).getTime()
+  )
+
+  const labels = sortedConsultations.map(c => new Date(c.data_consulta).toLocaleDateString('pt-BR'))
+  const data = sortedConsultations.map(c => c.peso)
+
+  weightChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Peso (kg)',
+        data: data,
+        borderColor: '#2ecc71',
+        backgroundColor: 'rgba(46, 204, 113, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#2ecc71',
+        pointRadius: 6,
+        pointHoverRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: false,
+          grid: { color: '#f0f0f0' }
+        },
+        x: {
+          grid: { display: false }
+        }
+      }
+    }
+  })
 }
 
 function attachEvents() {
@@ -747,7 +1109,7 @@ function attachEvents() {
   // Tabs
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      // Save current form data before switching
+      // Save current form data before switching (Creation Form)
       const form = document.querySelector('#patient-form') as HTMLFormElement
       if (form) {
         const formData = new FormData(form)
@@ -760,6 +1122,15 @@ function attachEvents() {
           }
         })
       }
+      
+      // Save current form data before switching (Profile Form)
+      const editForm = document.querySelector('#edit-patient-form') as HTMLFormElement
+      if (editForm && selectedPatient) {
+        const formData = new FormData(editForm)
+        const entries = Object.fromEntries(formData.entries())
+        selectedPatient = { ...selectedPatient, ...entries }
+      }
+
       currentTab = (btn as HTMLElement).dataset.tab as any
       render()
     })
@@ -801,13 +1172,33 @@ function attachEvents() {
   document.querySelector('#logout-btn')?.addEventListener('click', handleLogout)
   
   // Patient links
-  document.querySelectorAll('.patient-card, .patient-item').forEach(link => {
+  document.querySelectorAll('.patient-card, .patient-item, .patient-item-mini').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault()
       const id = (link as HTMLElement).dataset.id
-      alert(`Navegando para o perfil do paciente: ${id}`)
+      if (id) loadPatientProfile(id)
     })
   })
+
+  // Profile Section Events
+  document.querySelector('#btn-back-patients')?.addEventListener('click', () => {
+    view = 'patients'
+    render()
+  })
+
+  document.querySelector('#btn-save-profile')?.addEventListener('click', handleSavePatientProfile)
+
+  document.querySelector('#btn-open-consultation')?.addEventListener('click', () => {
+    isConsultationModalOpen = true
+    render()
+  })
+
+  document.querySelector('#btn-close-modal')?.addEventListener('click', () => {
+    isConsultationModalOpen = false
+    render()
+  })
+
+  document.querySelector('#new-consultation-form')?.addEventListener('submit', handleSaveConsultation)
 }
 
 function calculateAge() {

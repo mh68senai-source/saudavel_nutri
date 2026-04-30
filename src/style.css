@@ -600,3 +600,185 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Patient Profile Styles --- */
+
+.profile-container {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.profile-section {
+  background: var(--white);
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  overflow: hidden;
+  padding: 30px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  border-bottom: 2px solid #f8f9fa;
+  padding-bottom: 15px;
+}
+
+.section-header h2 {
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Consultations */
+.consultations-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 30px;
+}
+
+.chart-wrapper {
+  background: #f8f9fa;
+  border-radius: 16px;
+  padding: 20px;
+  min-height: 300px;
+  position: relative;
+}
+
+.consultation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.consultation-card {
+  background: #fff;
+  border: 1px solid #edf2f7;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.2s;
+}
+
+.consultation-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.cons-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.cons-date {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.cons-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 15px;
+  background: #fcfdfd;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: var(--text-light);
+  text-transform: uppercase;
+}
+
+.metric-value {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 15px;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-overlay.show {
+  display: flex;
+}
+
+.modal-content {
+  background: white;
+  width: 90%;
+  max-width: 600px;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Plans */
+.plan-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.plan-item {
+  background: #f8f9fa;
+  padding: 15px 20px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.plan-item:hover {
+  background: #f0fff4;
+  color: var(--primary);
+}
+
+.plan-date {
+  font-weight: 600;
+}
+
+.btn-icon {
+  background: none;
+  border: 1px solid #edf2f7;
+  color: var(--text-light);
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.btn-icon:hover {
+  background: #f8f9fa;
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
