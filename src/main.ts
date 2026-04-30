@@ -106,7 +106,11 @@ const signupTemplate = () => `
       <form id="signup-form">
         <div class="form-group">
           <label for="full-name">Nome Completo</label>
-          <input type="text" id="full-name" placeholder="Seu nome" required>
+          <input type="text" id="full-name" placeholder="Ex: Maria Oliveira" required>
+        </div>
+        <div class="form-group">
+          <label for="preferred-name">Como prefere ser chamado?</label>
+          <input type="text" id="preferred-name" placeholder="Ex: Nutri Maria" required>
         </div>
         <div class="form-group">
           <label for="email">E-mail</label>
@@ -194,7 +198,7 @@ const dashboardTemplate = () => `
     ${sidebarTemplate()}
     <main class="main-content">
       <header>
-        <h1>Bem-vinda, Nutri!</h1>
+        <h1>Olá, ${currentUser?.user_metadata?.preferred_name || 'Nutri'}!</h1>
         <p style="color: var(--text-light)">Aqui está o que está acontecendo hoje.</p>
       </header>
 
@@ -455,8 +459,12 @@ const profileTemplate = () => `
         <div class="stat-card" style="text-align: left;">
           <h3 style="margin-bottom: 20px;">Informações Pessoais</h3>
           <div class="form-group">
-            <label>Nome</label>
+            <label>Nome Completo</label>
             <input type="text" value="${currentUser?.user_metadata?.full_name || ''}" readonly style="background: #f8f9fa;">
+          </div>
+          <div class="form-group">
+            <label>Como prefere ser chamado</label>
+            <input type="text" value="${currentUser?.user_metadata?.preferred_name || ''}" readonly style="background: #f8f9fa;">
           </div>
           <div class="form-group">
             <label>E-mail</label>
@@ -1391,6 +1399,7 @@ async function handleUpdatePassword(e: Event) {
 async function handleSignup(e: Event) {
   e.preventDefault()
   const fullName = (document.querySelector('#full-name') as HTMLInputElement).value
+  const preferredName = (document.querySelector('#preferred-name') as HTMLInputElement).value
   const email = (document.querySelector('#email') as HTMLInputElement).value
   const password = (document.querySelector('#password') as HTMLInputElement).value
   const confirmPassword = (document.querySelector('#confirm-password') as HTMLInputElement).value
@@ -1410,7 +1419,8 @@ async function handleSignup(e: Event) {
     password,
     options: {
       data: {
-        full_name: fullName
+        full_name: fullName,
+        preferred_name: preferredName
       }
     }
   })
