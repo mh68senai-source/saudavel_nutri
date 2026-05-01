@@ -10,6 +10,9 @@ let loading = false
 let errorMessage = ''
 let successMessage = ''
 let currentUser: any = null
+let isGeneratingPlan = false
+let generatedPlan: any = null
+let isPlanModalOpen = false
 
 const eyeOpenIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`
 const eyeClosedIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10c2 4 14 4 16 0"/><path d="M4 12l-1 2.5"/><path d="M8 14v3"/><path d="M12 14.5v3"/><path d="M16 14v3"/><path d="M20 12l1 2.5"/></svg>`
@@ -78,7 +81,7 @@ const loginTemplate = () => `
           <label for="password">Senha</label>
           <div class="password-wrapper">
             <input type="password" id="password" placeholder="••••••••" required>
-            <button type="button" class="toggle-password" id="toggle-login-password">${eyeOpenIcon}</button>
+            <button type="button" class="toggle-password" id="toggle-login-password">${eyeClosedIcon}</button>
           </div>
         </div>
         <a href="#" class="forgot-password-link" id="go-forgot-password">Esqueci a senha</a>
@@ -134,7 +137,7 @@ const signupTemplate = () => `
           <label for="password">Senha</label>
           <div class="password-wrapper">
             <input type="password" id="password" placeholder="Mínimo 6 caracteres" minlength="6" required>
-            <button type="button" class="toggle-password" id="toggle-signup-password">${eyeOpenIcon}</button>
+            <button type="button" class="toggle-password" id="toggle-signup-password">${eyeClosedIcon}</button>
           </div>
         </div>
         <div class="form-group">
@@ -523,7 +526,7 @@ const profileTemplate = () => `
               <label>Nova Senha</label>
               <div class="password-wrapper">
                 <input type="password" id="new-password" placeholder="Mínimo 6 caracteres" minlength="6" required>
-                <button type="button" class="toggle-password" id="toggle-new-password">${eyeOpenIcon}</button>
+                <button type="button" class="toggle-password" id="toggle-new-password">${eyeClosedIcon}</button>
               </div>
             </div>
             <div class="form-group">
@@ -664,14 +667,24 @@ const patientProfileTemplate = () => {
         <section class="profile-section">
           <div class="section-header">
             <h2>🥗 Planos Alimentares</h2>
-            <button class="btn-primary" id="btn-generate-plan">Gerar Plano Alimentar</button>
+            <button class="btn-primary" id="btn-generate-plan" ${isGeneratingPlan ? 'disabled' : ''}>
+              ${isGeneratingPlan ? '⌛ Gerando...' : '✨ Gerar com IA'}
+            </button>
           </div>
+          
+          ${isGeneratingPlan ? `
+            <div class="loading-state" style="padding: 40px; text-align: center;">
+              <div class="spinner"></div>
+              <p style="margin-top: 15px; color: var(--text-light)">Nossa IA está elaborando o melhor plano para ${selectedPatient.nome}...</p>
+            </div>
+          ` : ''}
+
           <div class="plan-history">
-            ${patientPlans.length === 0 ? '<p class="empty-state">Nenhum plano alimentar gerado ainda</p>' : 
+            ${patientPlans.length === 0 && !isGeneratingPlan ? '<p class="empty-state">Nenhum plano alimentar gerado ainda</p>' : 
               patientPlans.map(p => `
-                <div class="plan-item">
+                <div class="plan-item" data-id="${p.id}">
                   <div class="plan-date">Plano de ${new Date(p.created_at).toLocaleDateString('pt-BR')}</div>
-                  <button class="btn-icon">👁️</button>
+                  <button class="btn-icon view-plan-btn" data-id="${p.id}">👁️</button>
                 </div>
               `).join('')
             }
@@ -679,6 +692,25 @@ const patientProfileTemplate = () => {
         </section>
       </div>
     </main>
+
+    <!-- Modal de Plano Alimentar (Geração/Edição/Visualização) -->
+    <div class="modal-overlay ${isPlanModalOpen ? 'show' : ''}" id="plan-modal">
+      <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+          <h2>🥗 Plano Alimentar</h2>
+          <button class="btn-secondary" id="btn-close-plan-modal">Fechar</button>
+        </div>
+        
+        <div id="plan-content">
+          ${generatedPlan ? renderPlanEditor(generatedPlan) : '<p>Carregando...</p>'}
+        </div>
+
+        <div style="display: flex; gap: 15px; margin-top: 30px; position: sticky; bottom: 0; background: white; padding-top: 15px; border-top: 1px solid #eee;">
+          <button type="button" class="btn-secondary" style="flex: 1;" id="btn-cancel-plan">Cancelar</button>
+          ${!generatedPlan?.id ? `<button type="button" class="btn-primary" style="flex: 2;" id="btn-save-plan">💾 Salvar Plano no Prontuário</button>` : ''}
+        </div>
+      </div>
+    </div>
     
     <div class="modal-overlay ${isConsultationModalOpen ? 'show' : ''}" id="consultation-modal">
       <div class="modal-content">
@@ -728,6 +760,113 @@ const patientProfileTemplate = () => {
 }
 
 // --- Functions ---
+
+function renderPlanEditor(plan: any) {
+  const days = plan.plano_semanal || []
+  
+  return `
+    <div class="plan-editor">
+      ${days.map((d: any, dayIdx: number) => `
+        <div class="day-card" style="margin-bottom: 30px; border: 1px solid #eee; border-radius: 15px; padding: 20px;">
+          <h3 style="margin-bottom: 20px; color: var(--primary); display: flex; align-items: center; gap: 10px;">
+            📅 ${d.dia}
+          </h3>
+          <div class="meals-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+            ${Object.entries(d.refeicoes).map(([mealKey, options]: [string, any]) => `
+              <div class="meal-group">
+                <label style="font-weight: 600; text-transform: capitalize; display: block; margin-bottom: 10px;">
+                  ${mealKey.replace(/_/g, ' ')}
+                </label>
+                <div class="options-list" style="display: flex; flex-direction: column; gap: 8px;">
+                  ${options.map((opt: string, optIdx: number) => `
+                    <input type="text" 
+                      class="plan-input" 
+                      data-day="${dayIdx}" 
+                      data-meal="${mealKey}" 
+                      data-option="${optIdx}" 
+                      value="${opt}" 
+                      style="width: 100%; padding: 8px 12px; border: 1px solid #edf2f7; border-radius: 8px; font-size: 14px;">
+                  `).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `
+}
+
+async function handleGeneratePlan() {
+  if (!selectedPatient) return
+  
+  isGeneratingPlan = true
+  render()
+  
+  try {
+    const { data, error } = await supabase.functions.invoke('gerar-plano', {
+      body: { dados_do_paciente: selectedPatient }
+    })
+    
+    if (error) {
+      // Tentar extrair mensagem amigável do corpo do erro
+      try {
+        const errBody = await error.context.json()
+        throw new Error(errBody.error || 'Erro desconhecido na geração')
+      } catch (e: any) {
+        throw new Error(e.message || 'Erro na comunicação com a IA')
+      }
+    }
+    
+    generatedPlan = data
+    isPlanModalOpen = true
+  } catch (error: any) {
+    alert(error.message)
+    console.error(error)
+  } finally {
+    isGeneratingPlan = false
+    render()
+  }
+}
+
+async function handleSavePlan() {
+  if (!selectedPatient || !generatedPlan) return
+  
+  // Collect data from inputs
+  const updatedPlan = { ...generatedPlan }
+  const inputs = document.querySelectorAll('.plan-input') as NodeListOf<HTMLInputElement>
+  
+  inputs.forEach(input => {
+    const dayIdx = parseInt(input.dataset.day!)
+    const meal = input.dataset.meal!
+    const optIdx = parseInt(input.dataset.option!)
+    updatedPlan.plano_semanal[dayIdx].refeicoes[meal][optIdx] = input.value
+  })
+
+  loading = true
+  render()
+  
+  try {
+    const { error } = await supabase
+      .from('planos_alimentares')
+      .insert([{
+        paciente_id: selectedPatient.id,
+        conteudo: updatedPlan
+      }])
+    
+    if (error) throw error
+    
+    isPlanModalOpen = false
+    generatedPlan = null
+    await loadPatientProfile(selectedPatient.id)
+    showToast('Plano alimentar salvo com sucesso!')
+  } catch (error: any) {
+    alert('Erro ao salvar plano: ' + error.message)
+  } finally {
+    loading = false
+    render()
+  }
+}
 
 function render() {
   if (view === 'login') app.innerHTML = loginTemplate()
@@ -1080,10 +1219,10 @@ function attachEvents() {
       const input = document.querySelector(t.input) as HTMLInputElement
       if (input.type === 'password') {
         input.type = 'text'
-        document.querySelector(t.btn)!.innerHTML = eyeClosedIcon
+        document.querySelector(t.btn)!.innerHTML = eyeOpenIcon
       } else {
         input.type = 'password'
-        document.querySelector(t.btn)!.innerHTML = eyeOpenIcon
+        document.querySelector(t.btn)!.innerHTML = eyeClosedIcon
       }
     })
   })
@@ -1245,6 +1384,37 @@ function attachEvents() {
   })
 
   document.querySelector('#new-consultation-form')?.addEventListener('submit', handleSaveConsultation)
+
+  // Meal Plan Events
+  document.querySelector('#btn-generate-plan')?.addEventListener('click', handleGeneratePlan)
+  
+  document.querySelector('#btn-save-plan')?.addEventListener('click', handleSavePlan)
+  
+  document.querySelector('#btn-close-plan-modal')?.addEventListener('click', () => {
+    isPlanModalOpen = false
+    generatedPlan = null
+    render()
+  })
+  
+  document.querySelector('#btn-cancel-plan')?.addEventListener('click', () => {
+    isPlanModalOpen = false
+    generatedPlan = null
+    render()
+  })
+
+  document.querySelectorAll('.view-plan-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const id = (btn as HTMLElement).dataset.id
+      const plan = patientPlans.find(p => p.id === id)
+      if (plan) {
+        generatedPlan = { ...plan.conteudo, id: plan.id }
+        isPlanModalOpen = true
+        render()
+      }
+    })
+  })
 }
 
 function calculateAge() {
