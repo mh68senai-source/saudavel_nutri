@@ -667,9 +667,14 @@ const patientProfileTemplate = () => {
         <section class="profile-section">
           <div class="section-header">
             <h2>🥗 Planos Alimentares</h2>
-            <button class="btn-primary" id="btn-generate-plan" ${isGeneratingPlan ? 'disabled' : ''}>
-              ${isGeneratingPlan ? '⌛ Gerando...' : '✨ Gerar com IA'}
-            </button>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn-primary" id="btn-new-plan">
+                <span>+ Novo Plano Alimentar</span>
+              </button>
+              <button class="btn-secondary" id="btn-generate-plan" ${isGeneratingPlan ? 'disabled' : ''} style="background: rgba(46, 204, 113, 0.1); color: var(--primary); border: 1px solid var(--primary);">
+                ${isGeneratingPlan ? '⌛ Gerando...' : '✨ Gerar com IA'}
+              </button>
+            </div>
           </div>
           
           ${isGeneratingPlan ? `
@@ -707,7 +712,7 @@ const patientProfileTemplate = () => {
 
         <div style="display: flex; gap: 15px; margin-top: 30px; position: sticky; bottom: 0; background: white; padding-top: 15px; border-top: 1px solid #eee;">
           <button type="button" class="btn-secondary" style="flex: 1;" id="btn-cancel-plan">Cancelar</button>
-          ${!generatedPlan?.id ? `<button type="button" class="btn-primary" style="flex: 2;" id="btn-save-plan">💾 Salvar Plano no Prontuário</button>` : ''}
+          <button type="button" class="btn-primary" style="flex: 2;" id="btn-save-plan">💾 Salvar Plano no Prontuário</button>
         </div>
       </div>
     </div>
@@ -763,29 +768,40 @@ const patientProfileTemplate = () => {
 
 function renderPlanEditor(plan: any) {
   const days = plan.plano_semanal || []
+  const mealIcons: any = {
+    'café da manhã': '☀️',
+    'lanche da manhã': '🍏',
+    'almoço': '🍲',
+    'lanche da tarde': '☕',
+    'jantar': '🌙'
+  }
   
   return `
     <div class="plan-editor">
       ${days.map((d: any, dayIdx: number) => `
-        <div class="day-card" style="margin-bottom: 30px; border: 1px solid #eee; border-radius: 15px; padding: 20px;">
-          <h3 style="margin-bottom: 20px; color: var(--primary); display: flex; align-items: center; gap: 10px;">
-            📅 ${d.dia}
-          </h3>
-          <div class="meals-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        <div class="day-card">
+          <div class="day-header">
+            <span class="day-icon">📅</span>
+            <h3>${d.dia}</h3>
+          </div>
+          <div class="meals-grid">
             ${Object.entries(d.refeicoes).map(([mealKey, options]: [string, any]) => `
               <div class="meal-group">
-                <label style="font-weight: 600; text-transform: capitalize; display: block; margin-bottom: 10px;">
-                  ${mealKey.replace(/_/g, ' ')}
-                </label>
-                <div class="options-list" style="display: flex; flex-direction: column; gap: 8px;">
+                <div class="meal-header">
+                  <span class="meal-icon">${mealIcons[mealKey.toLowerCase()] || '🍽️'}</span>
+                  <label>${mealKey}</label>
+                </div>
+                <div class="options-list">
                   ${options.map((opt: string, optIdx: number) => `
-                    <input type="text" 
-                      class="plan-input" 
-                      data-day="${dayIdx}" 
-                      data-meal="${mealKey}" 
-                      data-option="${optIdx}" 
-                      value="${opt}" 
-                      style="width: 100%; padding: 8px 12px; border: 1px solid #edf2f7; border-radius: 8px; font-size: 14px;">
+                    <div class="input-wrapper">
+                      <input type="text" 
+                        class="plan-input" 
+                        data-day="${dayIdx}" 
+                        data-meal="${mealKey}" 
+                        data-option="${optIdx}" 
+                        placeholder="Opção ${optIdx + 1}..."
+                        value="${opt}">
+                    </div>
                   `).join('')}
                 </div>
               </div>
@@ -795,6 +811,27 @@ function renderPlanEditor(plan: any) {
       `).join('')}
     </div>
   `
+}
+
+function createEmptyPlan() {
+  const days = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo']
+  const meals = ['Café da manhã', 'Lanche da manhã', 'Almoço', 'Lanche da tarde', 'Jantar']
+  
+  return {
+    plano_semanal: days.map(day => ({
+      dia: day,
+      refeicoes: meals.reduce((acc, meal) => {
+        acc[meal] = ['', '', '', '', '']
+        return acc
+      }, {} as any)
+    }))
+  }
+}
+
+function handleNewPlan() {
+  generatedPlan = createEmptyPlan()
+  isPlanModalOpen = true
+  render()
 }
 
 async function handleGeneratePlan() {
@@ -840,6 +877,11 @@ async function handleSavePlan() {
     const dayIdx = parseInt(input.dataset.day!)
     const meal = input.dataset.meal!
     const optIdx = parseInt(input.dataset.option!)
+    
+    // Garantir que a estrutura exista antes de atribuir
+    if (!updatedPlan.plano_semanal[dayIdx].refeicoes[meal]) {
+      updatedPlan.plano_semanal[dayIdx].refeicoes[meal] = ['', '', '', '', '']
+    }
     updatedPlan.plano_semanal[dayIdx].refeicoes[meal][optIdx] = input.value
   })
 
@@ -847,19 +889,29 @@ async function handleSavePlan() {
   render()
   
   try {
-    const { error } = await supabase
-      .from('planos_alimentares')
-      .insert([{
-        paciente_id: selectedPatient.id,
-        conteudo: updatedPlan
-      }])
+    let result;
+    if (generatedPlan.id) {
+      // Edição
+      result = await supabase
+        .from('planos_alimentares')
+        .update({ conteudo: updatedPlan })
+        .eq('id', generatedPlan.id)
+    } else {
+      // Novo
+      result = await supabase
+        .from('planos_alimentares')
+        .insert([{
+          paciente_id: selectedPatient.id,
+          conteudo: updatedPlan
+        }])
+    }
     
-    if (error) throw error
+    if (result.error) throw result.error
     
     isPlanModalOpen = false
     generatedPlan = null
     await loadPatientProfile(selectedPatient.id)
-    showToast('Plano alimentar salvo com sucesso!')
+    showToast(generatedPlan?.id ? 'Plano alimentar atualizado!' : 'Plano alimentar salvo com sucesso!')
   } catch (error: any) {
     alert('Erro ao salvar plano: ' + error.message)
   } finally {
@@ -1386,6 +1438,7 @@ function attachEvents() {
   document.querySelector('#new-consultation-form')?.addEventListener('submit', handleSaveConsultation)
 
   // Meal Plan Events
+  document.querySelector('#btn-new-plan')?.addEventListener('click', handleNewPlan)
   document.querySelector('#btn-generate-plan')?.addEventListener('click', handleGeneratePlan)
   
   document.querySelector('#btn-save-plan')?.addEventListener('click', handleSavePlan)

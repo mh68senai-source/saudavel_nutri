@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 export async function gerarPlano(dados_do_paciente, apiKey) {
   const genAI = new GoogleGenerativeAI(apiKey);
   // Tentando 2.0-flash pois o 2.5 está com alta demanda
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
   const prompt = `Você é um nutricionista profissional.
 Gere um plano alimentar semanal com base nos dados abaixo.

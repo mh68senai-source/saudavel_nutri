@@ -782,6 +782,119 @@ button:disabled {
   border-color: var(--primary);
 }
 
+/* --- Meal Plan Editor Premium Styles --- */
+
+.plan-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  padding: 10px;
+}
+
+.day-card {
+  background: #fff;
+  border: 1px solid #edf2f7;
+  border-radius: 20px;
+  padding: 25px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+  transition: transform 0.2s;
+}
+
+.day-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 8px 24px rgba(46, 204, 113, 0.05);
+}
+
+.day-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 1px dashed #edf2f7;
+}
+
+.day-icon {
+  font-size: 20px;
+  background: #f0fff4;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+.day-header h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.meals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 25px;
+}
+
+.meal-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.meal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.meal-icon {
+  font-size: 16px;
+}
+
+.meal-header label {
+  margin-bottom: 0;
+  text-transform: capitalize;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.plan-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #edf2f7;
+  border-radius: 10px;
+  font-size: 13.5px;
+  background: #fcfdfd;
+  transition: all 0.2s;
+}
+
+.plan-input:focus {
+  background: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(46, 204, 113, 0.08);
+}
+
+.plan-input::placeholder {
+  color: #cbd5e0;
+}
+
+/* Responsividade do Editor */
+@media (max-width: 768px) {
+  .meals-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* AI Meal Plan Additions */
 .spinner {
   width: 40px;
@@ -796,18 +909,5 @@ button:disabled {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}
-
-.plan-input:focus {
-  border-color: var(--primary) !important;
-  background-color: #f0fff4;
-}
-
-.day-card {
-  transition: all 0.2s;
-}
-
-.day-card:hover {
-  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
