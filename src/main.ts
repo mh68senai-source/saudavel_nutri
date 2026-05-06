@@ -12,6 +12,7 @@ let successMessage = ''
 let currentUser: any = null
 let isGeneratingPlan = false
 let generatedPlan: any = null
+let isSidebarOpen = false
 let isPlanModalOpen = false
 
 const eyeOpenIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`
@@ -156,35 +157,21 @@ const signupTemplate = () => `
   </div>
 `
 
-const forgotPasswordTemplate = () => `
-  <div class="auth-page">
-    <div class="card auth-card">
-      ${logoTemplate}
-      <h2>Recuperar senha</h2>
-      <p class="subtitle">Enviaremos um link para o seu e-mail</p>
-      
-      <div id="error-box" class="error-message" style="${errorMessage ? 'display: block' : ''}">${errorMessage}</div>
-      <div id="success-box" class="success-message" style="${successMessage ? 'display: block; background: #f0fff4; color: #27ae60; padding: 12px; border-radius: 10px; margin-bottom: 20px;' : 'display: none'}">${successMessage}</div>
-      
-      <form id="forgot-password-form">
-        <div class="form-group">
-          <label for="reset-email">E-mail</label>
-          <input type="email" id="reset-email" placeholder="seu@email.com" required>
-        </div>
-        <button type="submit" ${loading ? 'disabled' : ''}>
-          ${loading ? 'Enviando...' : 'Enviar link de recuperação'}
-        </button>
-      </form>
-      
-      <div class="footer-link">
-        <a href="#" id="back-to-login">Voltar para o login</a>
-      </div>
+const mobileHeaderTemplate = () => `
+  <div class="mobile-header">
+    <div class="logo-container mini">
+      <div class="apple-glass mini"></div>
+      <div class="logo-text mini">Saudável Nutri</div>
     </div>
+    <button class="menu-toggle" id="menu-toggle">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    </button>
   </div>
+  <div class="sidebar-overlay ${isSidebarOpen ? 'show' : ''}" id="sidebar-overlay"></div>
 `
 
 const sidebarTemplate = () => `
-  <aside class="sidebar">
+  <aside class="sidebar ${isSidebarOpen ? 'show' : ''}">
     <div class="logo-container">
       <div class="apple-glass"></div>
       <div class="logo-text">Saudável Nutri</div>
@@ -212,6 +199,7 @@ const sidebarTemplate = () => `
 
 const dashboardTemplate = () => `
   <div class="dashboard-layout">
+    ${mobileHeaderTemplate()}
     ${sidebarTemplate()}
     <main class="main-content">
       <header>
@@ -259,6 +247,7 @@ const dashboardTemplate = () => `
 
 const patientListTemplate = () => `
   <div class="dashboard-layout">
+    ${mobileHeaderTemplate()}
     ${sidebarTemplate()}
     <main class="main-content">
       <div class="page-header">
@@ -300,6 +289,7 @@ const patientFormTemplate = () => {
 
   return `
   <div class="dashboard-layout">
+    ${mobileHeaderTemplate()}
     ${sidebarTemplate()}
     <main class="main-content">
       <div class="page-header">
@@ -465,6 +455,7 @@ const patientFormTemplate = () => {
 
 const profileTemplate = () => `
   <div class="dashboard-layout">
+    ${mobileHeaderTemplate()}
     ${sidebarTemplate()}
     <main class="main-content">
       <header>
@@ -548,6 +539,7 @@ const patientProfileTemplate = () => {
 
   return `
   <div class="dashboard-layout">
+    ${mobileHeaderTemplate()}
     ${sidebarTemplate()}
     <main class="main-content">
       <div class="page-header">
@@ -1466,6 +1458,25 @@ function attachEvents() {
         isPlanModalOpen = true
         render()
       }
+    })
+  })
+
+  // Mobile menu events
+  document.querySelector('#menu-toggle')?.addEventListener('click', () => {
+    isSidebarOpen = !isSidebarOpen
+    render()
+  })
+
+  document.querySelector('#sidebar-overlay')?.addEventListener('click', () => {
+    isSidebarOpen = false
+    render()
+  })
+
+  // Navigation (Close sidebar on link click)
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      isSidebarOpen = false
+      render()
     })
   })
 }
